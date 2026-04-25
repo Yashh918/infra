@@ -1,0 +1,108 @@
+services:
+  kong:
+    image: kong:3.9
+    container_name: kong
+    restart: always
+    ports:
+      - "8005:8000/tcp"
+      - "127.0.0.1:7990:8001/tcp"
+      - "8443:8443/tcp"
+      - "127.0.0.1:8444:8444/tcp"
+    environment:
+      KONG_DATABASE: off
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTENER: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+      KONG_LOG_LEVEL: debug
+      KONG_PLUGINS: bundled
+    volumes: 
+      - "./config:/usr/local/kong/declarative"
+    networks:
+      - backend
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.8
+    hostname: kafka
+    container_name: kafka
+    restart: always
+    ports:
+      - "9092:9092"
+    environment:
+      CLUSTER_ID: "PQTkBmF4QteIhWRMiWDD8g"
+      KAFKA_PROCESS_ROLES: controller, broker
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPIC_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+    networks:
+      - backend
+    
+  mysql:
+    image: mysql:8
+    container_name: mysql-8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: yashh
+      MYSQL_PASSWORD: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-db:/var/lib/mysql
+    networks:
+      - backend
+    
+  user-service:
+    image: user-service
+    container_name: user-service
+    ports:
+      - 8081:8081
+    depends_on:
+      - kafka
+      - mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DB: user_service
+      MYSQL_USERNAME: yashh
+      MYSQL_PASSWORD: mysql
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - backend
+    
+  auth-service:
+    image: auth-service
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+      - mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT:  3306
+      MYSQL_DB: auth_service
+      MYSQL_USERNAME: yashh
+      MYSQL_PASSWORD: mysql
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - backend
+
+volumes:
+  mysql-db:
+      
+networks:
+  backend:
