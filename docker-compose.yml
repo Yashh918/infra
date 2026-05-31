@@ -18,7 +18,7 @@ services:
       KONG_ADMIN_LISTENER: 0.0.0.0:8001, 0.0.0.0:8444 ssl
       KONG_LOG_LEVEL: debug
       KONG_PLUGINS: bundled
-    volumes: 
+    volumes:
       - "./config:/usr/local/kong/declarative"
     networks:
       - backend
@@ -35,7 +35,7 @@ services:
       KAFKA_PROCESS_ROLES: controller, broker
       KAFKA_NODE_ID: 1
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      
+
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
@@ -49,7 +49,7 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 168
     networks:
       - backend
-    
+
   mysql:
     image: mysql:8
     container_name: mysql-8
@@ -64,7 +64,26 @@ services:
       - mysql-db:/var/lib/mysql
     networks:
       - backend
-    
+
+  auth-service:
+    image: auth-service
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+      - mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DB: auth_service
+      MYSQL_USERNAME: yashh
+      MYSQL_PASSWORD: mysql
+      KAFKA_BOOTSTRAP_SERVERS: kafka
+      KAFKA_PORT: 9092
+    networks:
+      - backend
+
   user-service:
     image: user-service
     container_name: user-service
@@ -79,30 +98,46 @@ services:
       MYSQL_DB: user_service
       MYSQL_USERNAME: yashh
       MYSQL_PASSWORD: mysql
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka
+      KAFKA_PORT: 9092
     networks:
       - backend
-    
-  auth-service:
-    image: auth-service
-    container_name: auth-service
+
+  expense-service:
+    image: expense-service
+    container_name: expense-service
     ports:
-      - "8080:8080"
+      - 8070:8070
     depends_on:
       - kafka
       - mysql
     environment:
       MYSQL_HOST: mysql
-      MYSQL_PORT:  3306
-      MYSQL_DB: auth_service
+      MYSQL_PORT: 3306
+      MYSQL_DB: expense_service
       MYSQL_USERNAME: yashh
       MYSQL_PASSWORD: mysql
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka
+      KAFKA_PORT: 9092
+    networks:
+      - backend
+
+  data-science-service:
+    image: data-science-service
+    container_name: data-science-service
+    ports:
+      - 8010:8010
+    depends_on:
+      - kafka
+    environment:
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 9092
     networks:
       - backend
 
 volumes:
   mysql-db:
-      
+
 networks:
   backend:
