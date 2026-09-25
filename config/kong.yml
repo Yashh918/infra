@@ -11,10 +11,26 @@ services:
         strip_path: false
   
   - name: user-service
-    # url: http://172.18.0.5:8081
-    url: http://user-service:8081
+    # url: http://172.18.0.5:8090
+    url: http://user-service:8090
     routes:
       - name: user-route
         paths:
           - /api/v1/users
+        strip_path: false
+
+  - name: expense-service
+    url: http://expense-service:8070
+    routes:
+      - name: expense-route
+        paths:
+          - /api/v1/expenses
+        strip_path: false
+
+  - name: data-science-service
+    url: http://data-science-service:8010
+    routes:
+      - name: data-science-route
+        paths:
+          - /api/v1/ds
         strip_path: false
